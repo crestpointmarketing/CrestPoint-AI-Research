@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CrestPoint AI Brain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Load PDF.js for PDF Upload Support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #475569;
+      }
+
+      /* PRINT PORTAL CSS - Guaranteed PDF Output */
+      .print-portal-root {
+        display: none; /* Hidden on screen */
+      }
+
+      @media print {
+        /* Reset and Nuclear Hide */
+        html, body {
+          background-color: white !important;
+          height: auto !important;
+          overflow: visible !important;
+        }
+
+        #root, .no-print {
+          display: none !important;
+          visibility: hidden !important;
+          height: 0 !important;
+          overflow: hidden !important;
+        }
+
+        .print-portal-root {
+          display: block !important;
+          visibility: visible !important;
+          position: relative !important;
+          width: 100% !important;
+          color: black !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        .printable-item {
+          page-break-inside: avoid;
+          break-inside: avoid;
+          margin-bottom: 2rem !important;
+          display: block !important;
+        }
+
+        h1, h2, h3 {
+          page-break-after: avoid;
+          break-after: avoid;
+        }
+
+        @page {
+          size: A4;
+          margin: 2cm;
+        }
+
+        /* Ensure links and text render clearly */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          text-rendering: optimizeLegibility;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "docx": "https://esm.sh/docx@9.1.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+    <div id="root"></div>
+  </body>
+</html>
