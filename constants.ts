@@ -54,3 +54,6 @@ export const INITIAL_RESEARCH_CONFIG = {
   outputFormat: 'Markdown' as const,
   additionalNotes: ''
 };
+
+export const MAX_URL_SOURCES = 5;
+export const MAX_DOC_SOURCES = 5;

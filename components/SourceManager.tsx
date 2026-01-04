@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Link as LinkIcon, FileText, Trash2, Globe, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, Link as LinkIcon, FileText, Trash2, Globe, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Source } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -12,18 +12,25 @@ interface SourceManagerProps {
   onAddSource: (source: Source) => void;
   onRemoveSource: (id: string) => void;
   compact?: boolean;
+  maxSources: number;
+  sourceType: 'document' | 'url';
+  onShowWarning?: (message: string) => void;
 }
 
 export const SourceManager: React.FC<SourceManagerProps> = ({ 
   sources, 
   onAddSource, 
   onRemoveSource,
-  compact = true 
+  compact = true,
+  maxSources,
+  sourceType,
+  onShowWarning,
 }) => {
-  const [activeTab, setActiveTab] = useState<'docs' | 'urls'>('docs');
   const [urlInput, setUrlInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const canAddSource = sources.length < maxSources && !isProcessing;
 
   const extractTextFromPdf = async (file: File): Promise<string> => {
     try {
@@ -41,7 +48,8 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
       return fullText;
     } catch (error) {
       console.error('PDF parsing error:', error);
-      return `[Error parsing PDF: ${file.name}. Falling back to metadata only.]`;
+      onShowWarning?.(`Failed to parse PDF: ${file.name}. Content may be empty or incomplete.`);
+      return `[Error parsing PDF: ${file.name}. Content may be empty or incomplete.]`;
     }
   };
 
@@ -51,12 +59,34 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
 
     setIsProcessing(true);
     
-    // Explicitly cast FileList to File array to resolve 'unknown' type errors for file properties
     const fileArray = Array.from(files) as File[];
+    let filesAddedCount = 0;
+
     for (const file of fileArray) {
+      if (sources.length + filesAddedCount >= maxSources) {
+          onShowWarning?.(`You can upload up to ${maxSources} documents. Skipping remaining files.`);
+          break;
+      }
+      
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      const supportedFileTypes = ['.pdf', '.txt', '.md', '.csv', '.json', '.docx', '.pptx']; // Added docx/pptx
+      if (!supportedFileTypes.includes(fileExtension)) {
+        onShowWarning?.(`Unsupported file type for "${file.name}": ${fileExtension}. Supported types are ${supportedFileTypes.join(', ')}.`);
+        continue;
+      }
+
+      if (sources.some(s => s.type === 'document' && s.name === file.name)) {
+        onShowWarning?.(`Duplicate file detected: "${file.name}".`);
+        continue;
+      }
+
       let content = '';
       if (file.type === 'application/pdf') {
         content = await extractTextFromPdf(file);
+      } else if (fileExtension === '.docx' || fileExtension === '.pptx') {
+        // Placeholder for DOCX/PPTX parsing (client-side libraries for these are complex and heavy)
+        content = `[Simulated content from ${file.name}. Full parsing of ${fileExtension.toUpperCase()} not implemented in UI for demo.]`;
+        onShowWarning?.(`Parsing for ${fileExtension.toUpperCase()} files is simulated for demo. Full text extraction may not be accurate.`);
       } else {
         content = await new Promise<string>((resolve) => {
           const reader = new FileReader();
@@ -77,6 +107,7 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
         }
       };
       onAddSource(newSource);
+      filesAddedCount++;
     }
     
     setIsProcessing(false);
@@ -84,7 +115,26 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
   };
 
   const handleUrlAdd = () => {
-    if (!urlInput.trim()) return;
+    if (!urlInput.trim()) {
+      onShowWarning?.("URL cannot be empty.");
+      return;
+    }
+
+    if (!canAddSource) {
+        onShowWarning?.(`You can add up to ${maxSources} reference URLs.`);
+        return;
+    }
+
+    const urlRegex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
+    if (!urlRegex.test(urlInput.trim())) {
+      onShowWarning?.(`Invalid URL format: "${urlInput}". Please enter a valid URL (e.g., https://example.com).`);
+      return;
+    }
+
+    if (sources.some(s => s.type === 'url' && s.metadata?.url === urlInput.trim())) {
+      onShowWarning?.(`Duplicate URL detected: "${urlInput}".`);
+      return;
+    }
     
     const newSource: Source = {
       id: Math.random().toString(36).substr(2, 9),
@@ -103,26 +153,26 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Conditionally render tabs based on sourceType */}
       <div className="flex space-x-4 border-b border-slate-200 dark:border-slate-800 pb-2">
-        <button
-          className={`pb-2 text-sm font-medium ${activeTab === 'docs' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-          onClick={() => setActiveTab('docs')}
-        >
-          <div className="flex items-center"><FileText className="w-4 h-4 mr-2" />Documents</div>
-        </button>
-        <button
-          className={`pb-2 text-sm font-medium ${activeTab === 'urls' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-          onClick={() => setActiveTab('urls')}
-        >
-          <div className="flex items-center"><LinkIcon className="w-4 h-4 mr-2" />Web Sources</div>
-        </button>
+        {sourceType === 'document' && (
+            <div className="pb-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
+              <div className="flex items-center"><FileText className="w-4 h-4 mr-2" />Documents</div>
+            </div>
+        )}
+        {sourceType === 'url' && (
+            <div className="pb-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
+              <div className="flex items-center"><LinkIcon className="w-4 h-4 mr-2" />Web Sources</div>
+            </div>
+        )}
       </div>
 
-      {activeTab === 'docs' && (
+      {sourceType === 'document' && (
         <div className="space-y-4">
            <div 
-             className={`border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-8 text-center transition-colors cursor-pointer ${isProcessing ? 'bg-slate-100 cursor-wait' : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'}`} 
-             onClick={() => !isProcessing && fileInputRef.current?.click()}
+             className={`border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-8 text-center transition-colors cursor-pointer ${isProcessing ? 'bg-slate-100 cursor-wait' : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'} ${!canAddSource ? 'opacity-70 cursor-not-allowed' : ''}`} 
+             onClick={() => canAddSource && fileInputRef.current?.click()}
+             aria-disabled={!canAddSource}
            >
               {isProcessing ? (
                 <Loader2 className="mx-auto h-12 w-12 text-indigo-600 animate-spin" />
@@ -138,36 +188,39 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
                   </>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-2">PDF, TXT, MD, CSV supported</p>
+              <p className="text-xs text-slate-500 mt-2">PDF, TXT, MD, CSV, DOCX, PPTX supported</p>
               <input 
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden" 
                 multiple 
-                accept=".pdf,.txt,.md,.csv,.json"
+                accept=".pdf,.txt,.md,.csv,.json,.docx,.pptx"
                 onChange={handleFileUpload}
-                disabled={isProcessing}
+                disabled={!canAddSource}
+                aria-label="Upload documents"
               />
            </div>
         </div>
       )}
 
-      {activeTab === 'urls' && (
+      {sourceType === 'url' && (
         <div className="flex space-x-2">
           <Input 
             placeholder="https://example.com/market-report" 
             value={urlInput} 
             onChange={(e) => setUrlInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleUrlAdd()}
+            onKeyDown={(e) => e.key === 'Enter' && canAddSource && handleUrlAdd()}
+            disabled={!canAddSource}
+            aria-label="Enter URL"
           />
-          <Button onClick={handleUrlAdd} disabled={!urlInput}>Add URL</Button>
+          <Button onClick={handleUrlAdd} disabled={!canAddSource || !urlInput.trim()} aria-label="Add URL">Add URL</Button>
         </div>
       )}
 
       {/* Source List */}
       <div className={`space-y-3 overflow-y-auto ${compact ? 'max-h-96' : ''}`}>
         {sources.length === 0 && !isProcessing && (
-          <div className="text-center py-8 text-slate-500 text-sm">No sources added yet. The AI will rely on general knowledge.</div>
+          <div className="text-center py-8 text-slate-500 text-sm">No {sourceType === 'document' ? 'documents' : 'URLs'} added yet.</div>
         )}
         {sources.map((source) => (
           <div key={source.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
@@ -178,13 +231,17 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{source.name}</p>
                 <div className="flex items-center text-xs text-slate-500 space-x-2">
-                  <span>{source.metadata?.size || 'Web Source'}</span>
+                  <span>{source.metadata?.size || (source.metadata?.url ? source.metadata.url.split('/')[2] : 'Web Source')}</span>
                   <span>•</span>
                   <span className="flex items-center text-emerald-600"><CheckCircle size={10} className="mr-1" /> Indexed</span>
                 </div>
               </div>
             </div>
-            <button onClick={() => onRemoveSource(source.id)} className="text-slate-400 hover:text-red-500 transition-colors p-2">
+            <button 
+              onClick={() => onRemoveSource(source.id)} 
+              className="text-slate-400 hover:text-red-500 transition-colors p-2"
+              aria-label={`Remove source ${source.name}`}
+            >
               <Trash2 size={16} />
             </button>
           </div>

@@ -4,7 +4,7 @@ import { ResearchForm } from './components/ResearchForm';
 import { SourceManager } from './components/SourceManager';
 import { ReportView } from './components/ReportView';
 import { Button } from './components/ui/Button';
-import { INITIAL_RESEARCH_CONFIG } from './constants';
+import { INITIAL_RESEARCH_CONFIG, MAX_DOC_SOURCES, MAX_URL_SOURCES } from './constants';
 import { GeneratedReport, ResearchConfig, Source, ViewState } from './types';
 import { generateIndustryReport } from './services/geminiService';
 import { Sparkles, AlertCircle, Database, Globe } from 'lucide-react';
@@ -12,11 +12,18 @@ import { Sparkles, AlertCircle, Database, Globe } from 'lucide-react';
 export default function App() {
   const [viewState, setViewState] = useState<ViewState>('input');
   const [config, setConfig] = useState<ResearchConfig>(INITIAL_RESEARCH_CONFIG);
-  const [sources, setSources] = useState<Source[]>([]);
-  const [knowledgeBase, setKnowledgeBase] = useState<Source[]>([]);
+  const [sources, setSources] = useState<Source[]>([]); // Project Sources (documents for current project)
+  const [knowledgeBase, setKnowledgeBase] = useState<Source[]>([]); // Persistent Knowledge Base (documents)
+  const [globalSources, setGlobalSources] = useState<Source[]>([]); // Global Sources (URLs)
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+
+  const handleSourceManagerWarning = (message: string) => {
+    setWarningMessage(message);
+    setTimeout(() => setWarningMessage(null), 5000); // Clear warning after 5 seconds
+  };
 
   const handleAddSource = (source: Source) => {
     setSources(prev => [...prev, source]);
@@ -32,12 +39,13 @@ export default function App() {
       return;
     }
     setError(null);
+    setWarningMessage(null); // Clear any existing warnings/errors
     setIsGenerating(true);
     setViewState('generating');
 
     try {
-      // Combine Project Sources AND Knowledge Base
-      const allSources = [...sources, ...knowledgeBase];
+      // Combine Project Sources, Global Sources, AND Knowledge Base
+      const allSources = [...sources, ...knowledgeBase, ...globalSources];
       const result = await generateIndustryReport(config, allSources);
       setReport(result);
       setViewState('report');
@@ -75,9 +83,15 @@ export default function App() {
                 </Button>
               </div>
               {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center">
+                <div role="alert" className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center">
                   <AlertCircle className="w-5 h-5 mr-2" />
                   {error}
+                </div>
+              )}
+              {warningMessage && ( 
+                <div role="alert" className="bg-amber-50 text-amber-700 p-4 rounded-lg flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  {warningMessage}
                 </div>
               )}
             </div>
@@ -85,14 +99,29 @@ export default function App() {
             <div className="lg:col-span-1">
                <div className="sticky top-8 space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Project Sources</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Project Sources ({sources.length} / {MAX_DOC_SOURCES} documents)</h3>
                     <SourceManager 
                       sources={sources} 
                       onAddSource={handleAddSource} 
                       onRemoveSource={handleRemoveSource}
                       compact={true}
+                      maxSources={MAX_DOC_SOURCES}
+                      sourceType="document"
+                      onShowWarning={handleSourceManagerWarning}
                     />
                   </div>
+
+                  {globalSources.length > 0 && (
+                     <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800">
+                        <div className="flex items-center text-purple-700 dark:text-purple-300 mb-2">
+                           <Globe className="w-4 h-4 mr-2" />
+                           <span className="font-semibold text-sm">Global Sources Active</span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                           The AI will also reference <strong>{globalSources.length}</strong> external web pages from your Global Sources during analysis.
+                        </p>
+                     </div>
+                  )}
 
                   {knowledgeBase.length > 0 && (
                     <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
@@ -121,7 +150,7 @@ export default function App() {
              <div>
                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Analyzing Sources & Generating Report</h2>
                <p className="text-slate-500 mt-2 max-w-md mx-auto">
-                 Synthesizing trends for {config.industry} based on {sources.length + knowledgeBase.length} sources...
+                 Synthesizing trends for {config.industry} based on {sources.length + knowledgeBase.length + globalSources.length} sources...
                </p>
              </div>
           </div>
@@ -139,9 +168,15 @@ export default function App() {
                    <p className="text-slate-500 dark:text-slate-400 mt-1">Manage persistent documents and resources for all research projects.</p>
                 </div>
                 <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-sm font-medium">
-                  {knowledgeBase.length} Files Indexed
+                  {knowledgeBase.length} / {MAX_DOC_SOURCES} Documents
                 </div>
              </div>
+             {warningMessage && ( 
+                <div role="alert" className="bg-amber-50 text-amber-700 p-4 rounded-lg flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  {warningMessage}
+                </div>
+              )}
             
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
                 <SourceManager 
@@ -149,18 +184,43 @@ export default function App() {
                   onAddSource={(s) => setKnowledgeBase(prev => [...prev, s])} 
                   onRemoveSource={(id) => setKnowledgeBase(prev => prev.filter(s => s.id !== id))} 
                   compact={false}
+                  maxSources={MAX_DOC_SOURCES}
+                  sourceType="document"
+                  onShowWarning={handleSourceManagerWarning}
                 />
             </div>
           </div>
         );
 
-      case 'sources':
+      case 'sources': 
         return (
           <div className="space-y-6">
-            <h1 className="text-2xl font-bold">Global Sources</h1>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center">
-              <Globe className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 italic">Real-time external news and API integrations (Coming Soon).</p>
+             <div className="flex items-center justify-between">
+                <div>
+                   <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Global Sources</h1>
+                   <p className="text-slate-500 dark:text-slate-400 mt-1">Add external web pages for AI to reference in its analysis.</p>
+                </div>
+                <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-full text-sm font-medium">
+                  {globalSources.length} / {MAX_URL_SOURCES} URLs
+                </div>
+             </div>
+             {warningMessage && ( 
+                <div role="alert" className="bg-amber-50 text-amber-700 p-4 rounded-lg flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  {warningMessage}
+                </div>
+              )}
+            
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <SourceManager 
+                  sources={globalSources} 
+                  onAddSource={(s) => setGlobalSources(prev => [...prev, s])} 
+                  onRemoveSource={(id) => setGlobalSources(prev => prev.filter(s => s.id !== id))} 
+                  compact={false}
+                  maxSources={MAX_URL_SOURCES}
+                  sourceType="url"
+                  onShowWarning={handleSourceManagerWarning}
+                />
             </div>
           </div>
         );
@@ -171,7 +231,11 @@ export default function App() {
   };
 
   return (
-    <Layout activeView={viewState} onChangeView={(v) => setViewState(v)}>
+    <Layout activeView={viewState} onChangeView={(v) => {
+      setViewState(v);
+      setWarningMessage(null); 
+      setError(null); 
+    }}>
       {renderContent()}
     </Layout>
   );

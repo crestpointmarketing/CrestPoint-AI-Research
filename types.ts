@@ -31,21 +31,22 @@ export interface ReportCitation {
   pageOrSection?: string;
 }
 
+export interface SocialPostContent {
+  title: string;
+  content: string;
+}
+
 export interface SocialPosts {
-  linkedin: string;
-  twitter: string; // Thread as a single string with separators or specific format
-  facebook: string;
-  xiaohongshu: string;
+  linkedin: SocialPostContent;
+  twitter: SocialPostContent; // Thread as a single string
+  facebook: SocialPostContent;
+  xiaohongshu: SocialPostContent;
 }
 
 export interface VisualAsset {
   platform: 'linkedin' | 'twitter' | 'facebook' | 'xiaohongshu';
   prompt: string;
-  overlayText: {
-    headline: string;
-    subtext?: string;
-    listItems?: string[]; // For Xiaohongshu
-  };
+  // Removed overlayText as per new requirements
   imageBase64: string;
 }
 

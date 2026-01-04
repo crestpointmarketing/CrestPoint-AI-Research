@@ -44,7 +44,7 @@ export const generateIndustryReport = async (
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview", 
-      contents: prompt,
+      contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -73,7 +73,11 @@ export const generateIndustryReport = async (
       }
     });
 
-    const jsonStr = response.text?.trim();
+    let jsonStr = response.text?.trim() || "";
+    if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+    
     if (!jsonStr) throw new Error("No response generated");
 
     const data = JSON.parse(jsonStr);
@@ -92,74 +96,66 @@ export const generateSocialMediaContent = async (report: GeneratedReport): Promi
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
-You are a professional social media editor and copywriter.
-Task: Rewrite the research insights into social media drafts that are perfectly formatted, easy to read, and free of special characters.
+You are a professional social media editor and ghostwriter for a C-Level executive.
+Task: Rewrite the research insights into social media drafts. 
 
 REPORT CONTEXT:
 Summary: ${report.executiveSummary}
 Key Takeaways: ${report.keyTakeaways.join('; ')}
 
-GLOBAL FORMATTING RULES:
-- Use plain ASCII punctuation only: " ' - ... (replace curly quotes and long dashes)
-- Remove invisible characters.
-- Keep line breaks intentional: No paragraph longer than 2 sentences.
-- Ensure content is ready to copy/paste directly.
+CRITICAL FORMATTING RULES:
+1. NO MARKDOWN BOLDING. Output must be plain text.
+2. USE DOUBLE NEWLINES (\\n\\n) between paragraphs.
+3. TONE: Professional, natural, human. Avoid AI clichés.
 
 PLATFORM SPECIFIC INSTRUCTIONS:
-
-1) LinkedIn:
-- Professional tone.
-- Length: 600–1200 characters.
-- Structure:
-  - Strong hook in first 2–3 lines.
-  - Short paragraphs (1–2 sentences max).
-  - Use a bullet list with "•" or numbered list "1)", "2)".
-  - End with a soft CTA in a separate paragraph.
-  - Hashtags in the final line only (3–6 tags).
-- Max 2 emojis total.
-
-2) X (Twitter Thread):
-- Create a thread of 3–5 tweets.
-- Each tweet MUST be under 280 characters.
-- Start tweets with "1/", "2/", etc.
-- Separate tweets with double newlines.
-- Strong opinion-driven insights.
-- Max 2 emojis total across the entire thread.
-
-3) Facebook:
-- Friendly and explanatory tone.
-- Short paragraphs.
-- Max 2 emojis total.
-
-4) Xiaohongshu (Chinese):
-- Title line in the format: 【Title Here】
-- 5–7 numbered insights using emojis like 1️⃣, 2️⃣.
-- Conversational tone, practical.
-- End with engagement CTA.
-- Max 4 emojis total (excluding the numbers).
+1) LinkedIn: Thought-leader style with hooks and bullet points.
+2) X (Twitter Thread): Punchy thread format separated by double newlines.
+3) Facebook: Narrative, casual storytelling style.
+4) Xiaohongshu (Rednote): Emoji-rich listicle style.
 
 Output JSON strictly adhering to the schema.
 `;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: prompt,
+      contents: { parts: [{ text: prompt }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            linkedin: { type: Type.STRING },
-            twitter: { type: Type.STRING, description: "Formatted thread with 1/, 2/ indicators" },
-            facebook: { type: Type.STRING },
-            xiaohongshu: { type: Type.STRING }
+            linkedin: { 
+              type: Type.OBJECT, 
+              properties: { title: { type: Type.STRING }, content: { type: Type.STRING } },
+              required: ["title", "content"]
+            },
+            twitter: { 
+              type: Type.OBJECT, 
+              properties: { title: { type: Type.STRING }, content: { type: Type.STRING } },
+              required: ["title", "content"]
+            },
+            facebook: { 
+              type: Type.OBJECT, 
+              properties: { title: { type: Type.STRING }, content: { type: Type.STRING } },
+              required: ["title", "content"]
+            },
+            xiaohongshu: { 
+              type: Type.OBJECT, 
+              properties: { title: { type: Type.STRING }, content: { type: Type.STRING } },
+              required: ["title", "content"]
+            }
           },
           required: ["linkedin", "twitter", "facebook", "xiaohongshu"]
         }
       }
     });
 
-    const jsonStr = response.text?.trim();
+    let jsonStr = response.text?.trim() || "";
+    if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+    }
+    
     if (!jsonStr) throw new Error("No social content generated");
     return JSON.parse(jsonStr);
   } catch (error) {
@@ -168,130 +164,63 @@ Output JSON strictly adhering to the schema.
   }
 };
 
-// --- VISUAL ASSETS GENERATION ---
-
-// 1. Generate Prompts & Text Specs using Gemini 3 Flash
-const generateVisualSpecs = async (report: GeneratedReport): Promise<Omit<SocialVisuals, 'linkedin' | 'twitter' | 'facebook' | 'xiaohongshu'> & { [key: string]: Omit<VisualAsset, 'imageBase64'> }> => {
+const generateVisualSpecs = async (report: GeneratedReport): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `
-You are a Visual Designer for a B2B AI research brand.
-Brand Style: Modern, clean, enterprise-grade, dark background with subtle gradient, neon green/electric blue accents, minimal icons, no clutter.
+You are a professional visual designer. Generate text-free image prompts for an enterprise-grade AI research platform.
+Topic: ${report.executiveSummary.split('.')[0]}
 
-Task: Create 4 image prompts (for background generation) and exact overlay text for social media.
-Base this on the report Key Takeaways: ${report.keyTakeaways.slice(0, 3).join('; ')}
-
-Outputs required for:
-1) LinkedIn (1200x627): One key takeaway. Headline max 14 words. Subtext max 18 words.
-2) Twitter (1600x900): Ultra-minimal. One bold statement max 12 words.
-3) Facebook (1200x630): Similar to LinkedIn but softer.
-4) Xiaohongshu (1080x1440): "Knowledge card" style. Title + 3-5 short numbered insights.
-
-IMPORTANT: The "prompt" should describe the VISUAL BACKGROUND ONLY (no text in the prompt description, just abstract/tech vibes). The "overlayText" contains the text we will render via CSS.
+Output JSON with a 'prompt' field for: linkedin, twitter, facebook, xiaohongshu.
+PROMPTS MUST BE VISUAL ONLY. NO TEXT.
 `;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: prompt,
+    contents: { parts: [{ text: prompt }] },
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          linkedin: {
-            type: Type.OBJECT,
-            properties: {
-              prompt: { type: Type.STRING },
-              overlayText: {
-                type: Type.OBJECT,
-                properties: {
-                  headline: { type: Type.STRING },
-                  subtext: { type: Type.STRING }
-                }
-              }
-            }
-          },
-          twitter: {
-            type: Type.OBJECT,
-            properties: {
-              prompt: { type: Type.STRING },
-              overlayText: {
-                type: Type.OBJECT,
-                properties: {
-                  headline: { type: Type.STRING }
-                }
-              }
-            }
-          },
-          facebook: {
-            type: Type.OBJECT,
-            properties: {
-              prompt: { type: Type.STRING },
-              overlayText: {
-                type: Type.OBJECT,
-                properties: {
-                  headline: { type: Type.STRING },
-                  subtext: { type: Type.STRING }
-                }
-              }
-            }
-          },
-          xiaohongshu: {
-            type: Type.OBJECT,
-            properties: {
-              prompt: { type: Type.STRING },
-              overlayText: {
-                type: Type.OBJECT,
-                properties: {
-                  headline: { type: Type.STRING },
-                  listItems: { type: Type.ARRAY, items: { type: Type.STRING } }
-                }
-              }
-            }
-          }
+          linkedin: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING } }, required: ["prompt"] },
+          twitter: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING } }, required: ["prompt"] },
+          facebook: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING } }, required: ["prompt"] },
+          xiaohongshu: { type: Type.OBJECT, properties: { prompt: { type: Type.STRING } }, required: ["prompt"] }
         },
         required: ["linkedin", "twitter", "facebook", "xiaohongshu"]
       }
     }
   });
 
-  const jsonStr = response.text?.trim();
-  if (!jsonStr) throw new Error("No visual specs generated");
+  let jsonStr = response.text?.trim() || "";
+  if (jsonStr.startsWith("```")) {
+    jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
   return JSON.parse(jsonStr);
 };
 
-// 2. Generate Actual Image using Gemini 2.5 Flash Image
 const generateImage = async (prompt: string, aspectRatio: '16:9' | '3:4'): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  // Using gemini-2.5-flash-image for generation as per guidelines for general image tasks
+  const finalPrompt = prompt + " --no text --no writing --no symbols. Enterprise-grade, abstract, clean background.";
+  
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [
-        { text: prompt + " High quality, 4k, abstract technology background, dark mode, neon accents, no text in image." }
-      ]
-    },
+    contents: { parts: [{ text: finalPrompt }] },
     config: {
-      imageConfig: {
-        aspectRatio: aspectRatio,
-      }
+      imageConfig: { aspectRatio: aspectRatio }
     }
   });
 
-  // Extract base64 image
   for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return part.inlineData.data;
-    }
+    if (part.inlineData) return part.inlineData.data;
   }
   throw new Error("No image data returned");
 };
 
 export const generateSocialAssets = async (report: GeneratedReport): Promise<SocialVisuals> => {
   try {
-    // Step 1: Get Specs
     const specs = await generateVisualSpecs(report);
 
-    // Step 2: Generate Images in Parallel
     const [liImg, twImg, fbImg, xhsImg] = await Promise.all([
       generateImage(specs.linkedin.prompt, '16:9'),
       generateImage(specs.twitter.prompt, '16:9'),
@@ -300,10 +229,10 @@ export const generateSocialAssets = async (report: GeneratedReport): Promise<Soc
     ]);
 
     return {
-      linkedin: { ...specs.linkedin, platform: 'linkedin', imageBase64: liImg } as VisualAsset,
-      twitter: { ...specs.twitter, platform: 'twitter', imageBase64: twImg } as VisualAsset,
-      facebook: { ...specs.facebook, platform: 'facebook', imageBase64: fbImg } as VisualAsset,
-      xiaohongshu: { ...specs.xiaohongshu, platform: 'xiaohongshu', imageBase64: xhsImg } as VisualAsset,
+      linkedin: { platform: 'linkedin', prompt: specs.linkedin.prompt, imageBase64: liImg },
+      twitter: { platform: 'twitter', prompt: specs.twitter.prompt, imageBase64: twImg },
+      facebook: { platform: 'facebook', prompt: specs.facebook.prompt, imageBase64: fbImg },
+      xiaohongshu: { platform: 'xiaohongshu', prompt: specs.xiaohongshu.prompt, imageBase64: xhsImg },
     };
   } catch (error) {
     console.error("Visual Asset Generation Error:", error);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { GeneratedReport, SocialPosts, SocialVisuals, VisualAsset } from '../types';
+import { GeneratedReport, SocialPosts, SocialVisuals, VisualAsset, SocialPostContent } from '../types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { FileText, List, BookOpen, Quote, Download, ArrowLeft, Copy, Check, FileCode, Share2, Twitter, Linkedin, Facebook, Megaphone, Loader2, Image as ImageIcon } from 'lucide-react';
@@ -18,7 +18,6 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
   const [isExportingWord, setIsExportingWord] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   
-  // Social Media State
   const [socialPosts, setSocialPosts] = useState<SocialPosts | null>(null);
   const [socialVisuals, setSocialVisuals] = useState<SocialVisuals | null>(null);
   const [isGeneratingSocial, setIsGeneratingSocial] = useState(false);
@@ -26,6 +25,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
   const [copyStates, setCopyStates] = useState<Record<string, boolean>>({});
 
   const handleCopy = (text: string, key: string = 'general') => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     if (key === 'general') {
         setCopied(true);
@@ -42,7 +42,8 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
       const posts = await generateSocialMediaContent(report);
       setSocialPosts(posts);
     } catch (err) {
-      console.error(err);
+      console.error("Social generation failed:", err);
+      alert("Failed to generate social media content. Please try again.");
     } finally {
       setIsGeneratingSocial(false);
     }
@@ -54,7 +55,8 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
       const visuals = await generateSocialAssets(report);
       setSocialVisuals(visuals);
     } catch (err) {
-      console.error(err);
+      console.error("Visual generation failed:", err);
+      alert("Failed to generate visual assets. Please try again.");
     } finally {
       setIsGeneratingVisuals(false);
     }
@@ -202,7 +204,6 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
     <div className="space-y-6 h-full flex flex-col">
       {createPortal(printableContent, document.body)}
 
-      {/* SCREEN CONTROLS */}
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
@@ -224,7 +225,6 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
         </div>
       </div>
 
-      {/* SCREEN DISPLAY */}
       <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden no-print">
         <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
           {[
@@ -240,12 +240,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`
-                  flex-1 flex items-center justify-center py-4 text-sm font-medium border-b-2 transition-colors
-                  ${isActive 
-                    ? 'border-indigo-600 text-indigo-600 bg-white dark:bg-slate-900' 
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'}
-                `}
+                className={`flex-1 flex items-center justify-center py-4 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-indigo-600 text-indigo-600 bg-white dark:bg-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               >
                 <Icon className={`w-4 h-4 mr-2 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
                 {tab.label}
@@ -304,7 +299,6 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
 
           {activeTab === 'social' && (
             <div className="space-y-8 max-w-5xl mx-auto pb-12">
-               {/* 1. TEXT GENERATION */}
                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-800 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-indigo-600 rounded-xl text-white">
@@ -334,38 +328,13 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
 
                {socialPosts && (
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                    <SocialCard 
-                      icon={Linkedin} 
-                      title="LinkedIn" 
-                      content={socialPosts.linkedin} 
-                      isCopied={copyStates['linkedin']}
-                      onCopy={() => handleCopy(socialPosts.linkedin, 'linkedin')}
-                    />
-                    <SocialCard 
-                      icon={Twitter} 
-                      title="X (Twitter Thread)" 
-                      content={socialPosts.twitter} 
-                      isCopied={copyStates['twitter']}
-                      onCopy={() => handleCopy(socialPosts.twitter, 'twitter')}
-                    />
-                    <SocialCard 
-                      icon={Facebook} 
-                      title="Facebook" 
-                      content={socialPosts.facebook} 
-                      isCopied={copyStates['facebook']}
-                      onCopy={() => handleCopy(socialPosts.facebook, 'facebook')}
-                    />
-                    <SocialCard 
-                      icon={Share2} 
-                      title="Xiaohongshu (小红书)" 
-                      content={socialPosts.xiaohongshu} 
-                      isCopied={copyStates['xhs']}
-                      onCopy={() => handleCopy(socialPosts.xiaohongshu, 'xhs')}
-                    />
+                    <SocialCard icon={Linkedin} title="LinkedIn" content={socialPosts.linkedin} isCopied={copyStates['linkedin']} onCopy={() => handleCopy(socialPosts.linkedin?.content, 'linkedin')} />
+                    <SocialCard icon={Twitter} title="X (Twitter Thread)" content={socialPosts.twitter} isCopied={copyStates['twitter']} onCopy={() => handleCopy(socialPosts.twitter?.content, 'twitter')} />
+                    <SocialCard icon={Facebook} title="Facebook" content={socialPosts.facebook} isCopied={copyStates['facebook']} onCopy={() => handleCopy(socialPosts.facebook?.content, 'facebook')} />
+                    <SocialCard icon={Share2} title="Xiaohongshu (Rednote)" content={socialPosts.xiaohongshu} isCopied={copyStates['xhs']} onCopy={() => handleCopy(socialPosts.xiaohongshu?.content, 'xhs')} />
                  </div>
                )}
 
-               {/* 2. IMAGE GENERATION */}
                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-emerald-600 rounded-xl text-white">
@@ -376,13 +345,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
                       <p className="text-sm text-slate-600 dark:text-slate-400">Create branded, platform-ready images.</p>
                     </div>
                   </div>
-                  <Button 
-                    variant="primary" 
-                    onClick={handleGenerateVisuals} 
-                    isLoading={isGeneratingVisuals}
-                    disabled={!!socialVisuals}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
+                  <Button variant="primary" onClick={handleGenerateVisuals} isLoading={isGeneratingVisuals} disabled={!!socialVisuals} className="bg-emerald-600 hover:bg-emerald-700">
                     {socialVisuals ? 'Assets Ready' : 'Generate Images'}
                   </Button>
                </div>
@@ -396,17 +359,12 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
 
                {socialVisuals && (
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* LinkedIn Visual */}
-                    <VisualPreview asset={socialVisuals.linkedin} title="LinkedIn (1200x627)" />
-                    {/* Twitter Visual */}
-                    <VisualPreview asset={socialVisuals.twitter} title="X / Twitter (1600x900)" />
-                    {/* Facebook Visual */}
-                    <VisualPreview asset={socialVisuals.facebook} title="Facebook (1200x630)" />
-                    {/* Xiaohongshu Visual */}
-                    <VisualPreview asset={socialVisuals.xiaohongshu} title="Xiaohongshu (Vertical)" />
+                    <VisualPreview asset={socialVisuals.linkedin} title="LinkedIn (16:9)" />
+                    <VisualPreview asset={socialVisuals.twitter} title="X / Twitter (16:9)" />
+                    <VisualPreview asset={socialVisuals.facebook} title="Facebook (16:9)" />
+                    <VisualPreview asset={socialVisuals.xiaohongshu} title="Xiaohongshu (3:4)" />
                  </div>
                )}
-
             </div>
           )}
         </div>
@@ -418,80 +376,72 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
 const SocialCard: React.FC<{ 
   icon: any, 
   title: string, 
-  content: string, 
+  content: SocialPostContent | undefined,
   onCopy: () => void,
   isCopied: boolean 
-}> = ({ icon: Icon, title, content, onCopy, isCopied }) => (
-  <Card className="flex flex-col h-full">
-    <div className="flex items-center justify-between mb-4">
-       <div className="flex items-center space-x-2">
-          <Icon className="w-5 h-5 text-indigo-600" />
-          <h5 className="font-bold text-slate-800 dark:text-slate-200">{title}</h5>
-       </div>
-       <button 
-         onClick={onCopy}
-         className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-         title="Copy to clipboard"
-       >
-         {isCopied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
-       </button>
-    </div>
-    <div className="flex-1 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-400 font-mono bg-slate-50 dark:bg-slate-950 p-4 rounded-lg overflow-y-auto max-h-96">
-      {content}
-    </div>
-  </Card>
-);
+}> = ({ icon: Icon, title, content, onCopy, isCopied }) => {
+  const cleanContent = (text: string) => (text || '').replace(/\*\*/g, '').replace(/__/g, '');
 
-const VisualPreview: React.FC<{ asset: VisualAsset, title: string }> = ({ asset, title }) => {
+  if (!content) return null;
+
+  return (
+    <Card className="flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+         <div className="flex items-center space-x-2">
+            <Icon className="w-5 h-5 text-indigo-600" />
+            <h5 className="font-bold text-slate-800 dark:text-slate-200">{title}</h5>
+         </div>
+         <button onClick={onCopy} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors">
+           {isCopied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-400" />}
+         </button>
+      </div>
+      <div className="pl-1 border-l-4 border-indigo-200 dark:border-indigo-800 mb-4">
+        <h4 className="font-bold text-md text-slate-800 dark:text-slate-200 leading-snug pl-3">{content.title || 'Draft Title'}</h4>
+      </div>
+      <div className="flex-1 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-400 font-mono bg-slate-50 dark:bg-slate-950 p-4 rounded-lg overflow-y-auto max-h-96">
+        {cleanContent(content.content)}
+      </div>
+    </Card>
+  );
+};
+
+const VisualPreview: React.FC<{ asset: VisualAsset | undefined, title: string }> = ({ asset, title }) => {
+  const [copiedBase64, setCopiedBase64] = useState(false);
+  if (!asset) return null;
+
   const isVertical = asset.platform === 'xiaohongshu';
+
+  const downloadImage = () => {
+    const link = document.createElement('a');
+    link.href = `data:image/png;base64,${asset.imageBase64}`;
+    link.download = `crestpoint_${asset.platform}_${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const copyBase64 = () => {
+    if (!asset.imageBase64) return;
+    navigator.clipboard.writeText(asset.imageBase64);
+    setCopiedBase64(true);
+    setTimeout(() => setCopiedBase64(false), 2000);
+  };
   
   return (
     <div className="space-y-3">
       <h5 className="font-semibold text-sm text-slate-500 dark:text-slate-400 uppercase tracking-wider">{title}</h5>
-      <div 
-        className={`relative overflow-hidden rounded-lg shadow-lg group ${isVertical ? 'aspect-[3/4]' : 'aspect-video'}`}
-      >
-        {/* Generated Background */}
-        <img 
-          src={`data:image/png;base64,${asset.imageBase64}`} 
-          className="w-full h-full object-cover" 
-          alt={`Generated asset for ${asset.platform}`}
-        />
-        
-        {/* Text Overlay - Simulating the Design */}
-        <div className="absolute inset-0 p-8 flex flex-col justify-center bg-black/40 text-white">
-          <div className={`${isVertical ? 'text-center' : 'text-left'}`}>
-             <h3 className={`font-bold leading-tight drop-shadow-lg ${isVertical ? 'text-2xl mb-6' : 'text-3xl mb-4'}`}>
-               {asset.overlayText.headline}
-             </h3>
-             
-             {asset.overlayText.subtext && (
-               <p className="text-lg opacity-90 font-medium max-w-lg drop-shadow-md">
-                 {asset.overlayText.subtext}
-               </p>
-             )}
-
-             {/* Special handling for Xiaohongshu lists */}
-             {asset.overlayText.listItems && (
-               <div className="mt-6 space-y-3 text-left bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
-                 {asset.overlayText.listItems.map((item, i) => (
-                   <div key={i} className="flex items-start text-sm font-medium">
-                     <span className="mr-2 text-emerald-400">{i+1}.</span>
-                     <span>{item}</span>
-                   </div>
-                 ))}
-               </div>
-             )}
-          </div>
-          
-          <div className="absolute bottom-6 left-6 text-xs font-bold uppercase tracking-widest opacity-70">
-            CrestPoint AI Brain
-          </div>
+      <div className={`relative overflow-hidden rounded-lg shadow-lg group ${isVertical ? 'aspect-[3/4]' : 'aspect-video'}`}>
+        <img src={`data:image/png;base64,${asset.imageBase64}`} className="w-full h-full object-cover" alt={`Generated asset`} />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center space-x-2">
+          <Button variant="secondary" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" onClick={downloadImage}>
+            <Download className="w-4 h-4 mr-2" /> Download
+          </Button>
+          <Button variant="secondary" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" onClick={copyBase64}>
+            {copiedBase64 ? <Check className="w-4 h-4 mr-2 text-emerald-500" /> : <Copy className="w-4 h-4 mr-2" />} {copiedBase64 ? 'Copied' : 'Base64'}
+          </Button>
         </div>
       </div>
-      <div className="text-xs text-slate-400 truncate px-1">
-        Prompt: {asset.prompt}
-      </div>
+      <div className="text-xs text-slate-400 truncate px-1">Prompt: {asset.prompt}</div>
     </div>
   );
 };
