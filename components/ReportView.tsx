@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { GeneratedReport, SocialPosts, SocialVisuals, VisualAsset, SocialPostContent } from '../types';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
-import { FileText, List, BookOpen, Quote, Download, ArrowLeft, Copy, Check, FileCode, Share2, Twitter, Linkedin, Facebook, Megaphone, Loader2, Image as ImageIcon } from 'lucide-react';
+import { FileText, List, BookOpen, Quote, Download, ArrowLeft, Copy, Check, FileCode, Share2, Twitter, Linkedin, Facebook, Megaphone, Loader2, Image as ImageIcon, Presentation } from 'lucide-react';
 import { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel } from "docx";
+import pptxgen from "pptxgenjs";
 import { generateSocialMediaContent, generateSocialAssets } from '../services/geminiService';
 
 interface ReportViewProps {
@@ -17,6 +18,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
   const [copied, setCopied] = useState(false);
   const [isExportingWord, setIsExportingWord] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingPPT, setIsExportingPPT] = useState(false);
   
   const [socialPosts, setSocialPosts] = useState<SocialPosts | null>(null);
   const [socialVisuals, setSocialVisuals] = useState<SocialVisuals | null>(null);
@@ -69,6 +71,67 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
       window.print();
       setIsExportingPDF(false);
     }, 250);
+  };
+
+  const handleExportPPT = async () => {
+    setIsExportingPPT(true);
+    try {
+      const pres = new pptxgen();
+      
+      // Title Slide
+      let titleSlide = pres.addSlide();
+      titleSlide.background = { color: "F1F5F9" };
+      titleSlide.addText("CrestPoint AI Brain", {
+        x: 0, y: "35%", w: "100%", align: "center", fontSize: 44, bold: true, color: "4F46E5"
+      });
+      titleSlide.addText("Strategic Industry Research Analysis", {
+        x: 0, y: "50%", w: "100%", align: "center", fontSize: 24, color: "64748B"
+      });
+      titleSlide.addText(`Generated on: ${new Date(report.generationTime).toLocaleDateString()}`, {
+        x: 0, y: "85%", w: "100%", align: "center", fontSize: 12, color: "94A3B8"
+      });
+
+      // Executive Summary Slide
+      let summarySlide = pres.addSlide();
+      summarySlide.addText("Executive Summary", { x: 0.5, y: 0.5, w: "90%", fontSize: 28, bold: true, color: "4F46E5" });
+      summarySlide.addText(report.executiveSummary, { 
+        x: 0.5, y: 1.5, w: "90%", h: "70%", fontSize: 14, color: "334155", align: "justify" 
+      });
+
+      // Analysis Slides (Split by paragraphs)
+      const paragraphs = report.fullReport.split('\n\n').filter(p => p.trim().length > 0);
+      paragraphs.forEach((p, idx) => {
+        let slide = pres.addSlide();
+        slide.addText(`Detailed Analysis (Part ${idx + 1})`, { x: 0.5, y: 0.5, w: "90%", fontSize: 24, bold: true, color: "4F46E5" });
+        slide.addText(p, { 
+          x: 0.5, y: 1.5, w: "90%", h: "70%", fontSize: 14, color: "334155", align: "justify" 
+        });
+      });
+
+      // Key Takeaways Slide
+      let takeawaysSlide = pres.addSlide();
+      takeawaysSlide.addText("Key Strategic Takeaways", { x: 0.5, y: 0.5, w: "90%", fontSize: 28, bold: true, color: "4F46E5" });
+      const bulletPoints = report.keyTakeaways.map(t => ({ text: t, options: { bullet: true, color: "334155", margin: 10 } }));
+      takeawaysSlide.addText(bulletPoints, { x: 0.5, y: 1.5, w: "90%", h: "70%", fontSize: 16 });
+
+      // Citations/Sources Slide
+      if (report.citations.length > 0) {
+        let sourcesSlide = pres.addSlide();
+        sourcesSlide.addText("Supporting Evidence & Sources", { x: 0.5, y: 0.5, w: "90%", fontSize: 28, bold: true, color: "4F46E5" });
+        const citationTexts = report.citations.map(c => ({ 
+          text: `[${c.sourceName}] "${c.quote}"`, 
+          options: { fontSize: 12, color: "64748B", italic: true, breakLine: true, margin: 10 } 
+        }));
+        sourcesSlide.addText(citationTexts as any, { x: 0.5, y: 1.5, w: "90%", h: "70%", fontSize: 12 });
+      }
+
+      await pres.writeFile({ fileName: `CrestPoint_Presentation_${Date.now()}.pptx` });
+    } catch (error) {
+      console.error("PPT export failed:", error);
+      alert("Failed to export PPT. Check console for details.");
+    } finally {
+      setIsExportingPPT(false);
+    }
   };
 
   const handleExportWord = async () => {
@@ -217,10 +280,13 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
               {copied ? 'Copied' : 'Copy Text'}
            </Button>
            <Button variant="outline" size="sm" onClick={handleExportWord} isLoading={isExportingWord}>
-              <FileCode className="w-4 h-4 mr-1" /> Export Word
+              <FileCode className="w-4 h-4 mr-1" /> Word
+           </Button>
+           <Button variant="outline" size="sm" onClick={handleExportPPT} isLoading={isExportingPPT}>
+              <Presentation className="w-4 h-4 mr-1" /> PPT
            </Button>
            <Button variant="primary" size="sm" onClick={handleExportPDF} isLoading={isExportingPDF}>
-              <Download className="w-4 h-4 mr-1" /> Export PDF
+              <Download className="w-4 h-4 mr-1" /> PDF
            </Button>
         </div>
       </div>

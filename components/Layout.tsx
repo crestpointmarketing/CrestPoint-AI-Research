@@ -44,7 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onChangeVi
         <div className="p-4 border-t border-slate-800">
            <NavItem 
             icon={Settings} 
-            label="Settings" 
+            label="System Cleanup" 
             active={false} 
             onClick={() => {}} 
           />
@@ -52,7 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onChangeVi
               <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-bold">JD</div>
               <div className="text-sm">
                 <div className="font-medium">Jane Doe</div>
-                <div className="text-slate-500 text-xs">Admin Workspace</div>
+                <div className="text-slate-500 text-xs">Local Workspace</div>
               </div>
            </div>
         </div>

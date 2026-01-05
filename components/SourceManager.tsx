@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Link as LinkIcon, FileText, Trash2, Globe, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, Link as LinkIcon, FileText, Trash2, Globe, CheckCircle, Loader2, Download } from 'lucide-react';
 import { Source } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -69,7 +69,7 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
       }
       
       const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-      const supportedFileTypes = ['.pdf', '.txt', '.md', '.csv', '.json', '.docx', '.pptx']; // Added docx/pptx
+      const supportedFileTypes = ['.pdf', '.txt', '.md', '.csv', '.json', '.docx', '.pptx']; 
       if (!supportedFileTypes.includes(fileExtension)) {
         onShowWarning?.(`Unsupported file type for "${file.name}": ${fileExtension}. Supported types are ${supportedFileTypes.join(', ')}.`);
         continue;
@@ -84,7 +84,6 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
       if (file.type === 'application/pdf') {
         content = await extractTextFromPdf(file);
       } else if (fileExtension === '.docx' || fileExtension === '.pptx') {
-        // Placeholder for DOCX/PPTX parsing (client-side libraries for these are complex and heavy)
         content = `[Simulated content from ${file.name}. Full parsing of ${fileExtension.toUpperCase()} not implemented in UI for demo.]`;
         onShowWarning?.(`Parsing for ${fileExtension.toUpperCase()} files is simulated for demo. Full text extraction may not be accurate.`);
       } else {
@@ -151,19 +150,59 @@ export const SourceManager: React.FC<SourceManagerProps> = ({
     setUrlInput('');
   };
 
+  const handleDownloadAll = () => {
+    if (sources.length === 0) return;
+
+    let content = '';
+    let filename = '';
+
+    if (sourceType === 'document') {
+      // Export documents as a combined text summary or JSON backup
+      // A JSON file is more portable for "enterprise" use
+      content = JSON.stringify(sources, null, 2);
+      filename = `KnowledgeBase_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    } else {
+      // Export URLs as a simple line-separated list
+      content = sources.map(s => s.metadata?.url || s.name).join('\n');
+      filename = `GlobalSources_URLs_${new Date().toISOString().split('T')[0]}.txt`;
+    }
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Conditionally render tabs based on sourceType */}
-      <div className="flex space-x-4 border-b border-slate-200 dark:border-slate-800 pb-2">
-        {sourceType === 'document' && (
-            <div className="pb-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
-              <div className="flex items-center"><FileText className="w-4 h-4 mr-2" />Documents</div>
-            </div>
-        )}
-        {sourceType === 'url' && (
-            <div className="pb-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
-              <div className="flex items-center"><LinkIcon className="w-4 h-4 mr-2" />Web Sources</div>
-            </div>
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex space-x-4">
+          {sourceType === 'document' && (
+              <div className="pb-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
+                <div className="flex items-center"><FileText className="w-4 h-4 mr-2" />Documents</div>
+              </div>
+          )}
+          {sourceType === 'url' && (
+              <div className="pb-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
+                <div className="flex items-center"><LinkIcon className="w-4 h-4 mr-2" />Web Sources</div>
+              </div>
+          )}
+        </div>
+        
+        {sources.length > 0 && (
+          <button 
+            onClick={handleDownloadAll}
+            className="flex items-center text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+            title="Download all sources"
+          >
+            <Download size={14} className="mr-1.5" />
+            Export All
+          </button>
         )}
       </div>
 
