@@ -80,9 +80,10 @@ export default function App() {
       const result = await generateIndustryReport(config, allSources);
       setReport(result);
       setViewState('report');
-    } catch (err) {
-      console.error(err);
-      setError("Failed to generate report. Please check your network and try again.");
+    } catch (err: any) {
+      console.error("Research Generation Error:", err);
+      // Display the actual error message to help diagnostics
+      setError(err.message || "Failed to generate report. Please check your network and try again.");
       setViewState('input');
     } finally {
       setIsGenerating(false);
@@ -124,9 +125,13 @@ export default function App() {
                 </Button>
               </div>
               {error && (
-                <div role="alert" className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center">
-                  <AlertCircle className="w-5 h-5 mr-2" />
-                  {error}
+                <div role="alert" className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start">
+                  <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-bold">Error encountered:</p>
+                    <p className="text-sm">{error}</p>
+                    <p className="mt-2 text-xs opacity-75">Tip: If you just added your API key, you must Redeploy on Vercel for changes to take effect.</p>
+                  </div>
                 </div>
               )}
               {warningMessage && ( 

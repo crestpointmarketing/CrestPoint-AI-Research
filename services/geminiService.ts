@@ -1,6 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeneratedReport, ResearchConfig, Source, SocialPosts, SocialVisuals, VisualAsset } from "../types";
 
+const getApiKey = () => {
+  const key = process.env.API_KEY;
+  // In Vite builds, if the env var is missing, it might be baked as the literal string "undefined"
+  if (!key || key === 'undefined' || key.length < 5) {
+    throw new Error("Gemini API Key is missing or invalid. Please ensure API_KEY is set in Vercel and you have TRIGGERED A REDEPLOY.");
+  }
+  return key;
+};
+
 const constructPrompt = (config: ResearchConfig, sources: Source[]): string => {
   const sourceContext = sources
     .map((s, i) => `[Source ${i + 1}: ${s.name}] type: ${s.type}\nContent snippet: ${s.content.slice(0, 2000)}...`) 
@@ -38,8 +47,10 @@ export const generateIndustryReport = async (
   config: ResearchConfig,
   sources: Source[]
 ): Promise<GeneratedReport> => {
+  const apiKey = getApiKey();
+
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = constructPrompt(config, sources);
 
     const response = await ai.models.generateContent({
@@ -93,8 +104,10 @@ export const generateIndustryReport = async (
 };
 
 export const generateSocialMediaContent = async (report: GeneratedReport): Promise<SocialPosts> => {
+  const apiKey = getApiKey();
+
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
 You are a professional social media editor and ghostwriter for a C-Level executive.
 Task: Rewrite the research insights into social media drafts. 
@@ -165,7 +178,8 @@ Output JSON strictly adhering to the schema.
 };
 
 const generateVisualSpecs = async (report: GeneratedReport): Promise<any> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
   const prompt = `
 You are a professional visual designer. Generate text-free image prompts for an enterprise-grade AI research platform.
 Topic: ${report.executiveSummary.split('.')[0]}
@@ -200,7 +214,8 @@ PROMPTS MUST BE VISUAL ONLY. NO TEXT.
 };
 
 const generateImage = async (prompt: string, aspectRatio: '16:9' | '3:4'): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
   const finalPrompt = prompt + " --no text --no writing --no symbols. Enterprise-grade, abstract, clean background.";
   
   const response = await ai.models.generateContent({
