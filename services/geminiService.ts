@@ -2,10 +2,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { GeneratedReport, ResearchConfig, Source, SocialPosts, SocialVisuals } from "../types";
 
 const getApiKey = () => {
-  const key = process.env.API_KEY;
+  const key = process.env.GEMINI_API_KEY;
   // In Vite builds, if the env var is missing, it might be baked as the literal string "undefined"
   if (!key || key === 'undefined' || key.length < 5) {
-    throw new Error("Gemini API Key is missing or invalid. Please ensure API_KEY is set in Vercel and you have TRIGGERED A REDEPLOY.");
+    throw new Error("Gemini API Key is missing or invalid. Please ensure GEMINI_API_KEY is set in Vercel and you have TRIGGERED A REDEPLOY.");
   }
   return key;
 };
@@ -32,19 +32,45 @@ KNOWLEDGE BASE (CONTEXT):
 ${sourceContext || "No specific documents provided. Rely on general professional knowledge."}
 
 STRICT INSTRUCTIONS FOR THE "fullReport" SECTION:
-The "fullReport" field must be formatted in MARKDOWN. 
-You MUST structure the "fullReport" content to cover the following sections in order (use ## for headers):
-1. ## Industry Definition & Scope
-2. ## Market Size & Growth
-3. ## Market Drivers
-4. ## Market Challenges & Risks
-5. ## Technology Landscape
-6. ## Competitive Landscape (Include a table representation if possible)
-7. ## Use Cases & Applications
-8. ## Buyer Personas
-9. ## Trends & Future Outlook
-10. ## Strategic Implications
-11. ## Recommendations
+You MUST structure the "fullReport" content to cover the following sections in order.
+
+STRICT FORMAT RULES:
+- DO NOT use markdown headings (no ##, ###, or #).
+- Use ALL CAPS for section titles (e.g., INDUSTRY DEFINITION & SCOPE, MARKET SIZE & GROWTH).
+- Add clear spacing between sections (blank lines).
+- Use short paragraphs (max 3–4 lines each).
+- Each paragraph must express only ONE idea.
+- Break dense content into bullet points or numbered lists whenever possible.
+- Use bold sparingly to highlight key terms or insights.
+- Avoid long text blocks at all cost.
+
+STRUCTURE REQUIREMENTS:
+Organize content into clearly separated sections using ALL CAPS titles in this exact order:
+INDUSTRY DEFINITION & SCOPE
+MARKET SIZE & GROWTH
+MARKET DRIVERS
+MARKET CHALLENGES & RISKS
+TECHNOLOGY LANDSCAPE
+COMPETITIVE LANDSCAPE
+USE CASES & APPLICATIONS
+BUYER PERSONAS
+TRENDS & FUTURE OUTLOOK
+STRATEGIC IMPLICATIONS
+RECOMMENDATIONS
+
+STYLE:
+- Write like a consulting firm (McKinsey / BCG style).
+- Clear, concise, and scannable.
+- No fluff, no repetition.
+- Every sentence must add value.
+
+OUTPUT GOAL:
+The result should look like a clean, executive-ready report that can be directly used in a presentation, website, or white paper—not like AI-generated text.
+
+CRITICAL LENGTH REQUIREMENT based on selected Depth (${config.reportDepth}):
+- If "Brief Overview (2-3 pages)": Write approximately 1000-1500 words.
+- If "Standard Analysis (5-10 pages)": Write approximately 2500-4000 words. Provide extensive detail, multiple examples, and deep analysis for each section.
+- If "Deep Dive Professional (15+ pages)": Write approximately 6000+ words. Provide exhaustive detail, comprehensive market breakdowns, extensive competitive analysis, and highly detailed strategic recommendations. Expand significantly on every single section.
 
 Do NOT include the "Executive Summary" or "Methodology" in the "fullReport" string, as those are handled by separate fields or the system wrapper.
 Maintain a professional, data-driven tone.
