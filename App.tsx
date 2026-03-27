@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { ResearchForm } from './components/ResearchForm';
 import { SourceManager } from './components/SourceManager';
@@ -16,17 +16,17 @@ export default function App() {
   
   // Persistent States
   const [knowledgeBase, setKnowledgeBase] = useState<Source[]>(() => {
-    const saved = localStorage.getItem('crestpoint_kb');
+    const saved = localStorage.getItem('bigbrain_kb');
     return saved ? JSON.parse(saved) : [];
   });
   
   const [globalSources, setGlobalSources] = useState<Source[]>(() => {
-    const saved = localStorage.getItem('crestpoint_gs');
+    const saved = localStorage.getItem('bigbrain_gs');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [report, setReport] = useState<GeneratedReport | null>(() => {
-    const saved = localStorage.getItem('crestpoint_last_report');
+    const saved = localStorage.getItem('bigbrain_last_report');
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -36,16 +36,16 @@ export default function App() {
 
   // Persistence Effects
   useEffect(() => {
-    localStorage.setItem('crestpoint_kb', JSON.stringify(knowledgeBase));
+    localStorage.setItem('bigbrain_kb', JSON.stringify(knowledgeBase));
   }, [knowledgeBase]);
 
   useEffect(() => {
-    localStorage.setItem('crestpoint_gs', JSON.stringify(globalSources));
+    localStorage.setItem('bigbrain_gs', JSON.stringify(globalSources));
   }, [globalSources]);
 
   useEffect(() => {
     if (report) {
-      localStorage.setItem('crestpoint_last_report', JSON.stringify(report));
+      localStorage.setItem('bigbrain_last_report', JSON.stringify(report));
     }
   }, [report]);
 
@@ -93,6 +93,9 @@ export default function App() {
   const renderContent = () => {
     switch (viewState) {
       case 'input':
+        const docSources = sources.filter(s => s.type === 'document');
+        const urlSources = sources.filter(s => s.type === 'url');
+
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
@@ -144,15 +147,34 @@ export default function App() {
 
             <div className="lg:col-span-1">
                <div className="sticky top-8 space-y-6">
+                  {/* Project Documents */}
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Project Sources ({sources.length} / {MAX_DOC_SOURCES})</h3>
+                    <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                      Project Documents ({docSources.length} / {MAX_DOC_SOURCES})
+                    </h3>
                     <SourceManager 
-                      sources={sources} 
+                      sources={docSources} 
                       onAddSource={(s) => setSources(prev => [...prev, s])} 
                       onRemoveSource={(id) => setSources(prev => prev.filter(s => s.id !== id))}
                       compact={true}
                       maxSources={MAX_DOC_SOURCES}
                       sourceType="document"
+                      onShowWarning={handleSourceManagerWarning}
+                    />
+                  </div>
+
+                  {/* Project URLs */}
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                      Project URLs ({urlSources.length} / {MAX_URL_SOURCES})
+                    </h3>
+                    <SourceManager 
+                      sources={urlSources} 
+                      onAddSource={(s) => setSources(prev => [...prev, s])} 
+                      onRemoveSource={(id) => setSources(prev => prev.filter(s => s.id !== id))}
+                      compact={true}
+                      maxSources={MAX_URL_SOURCES}
+                      sourceType="url"
                       onShowWarning={handleSourceManagerWarning}
                     />
                   </div>

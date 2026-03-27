@@ -26,6 +26,9 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
   const [isGeneratingVisuals, setIsGeneratingVisuals] = useState(false);
   const [copyStates, setCopyStates] = useState<Record<string, boolean>>({});
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedReport, setEditedReport] = useState(report);
+
   const handleCopy = (text: string, key: string = 'general') => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -64,6 +67,53 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
     }
   };
 
+  const handleExportMarkdown = () => {
+    const date = new Date(editedReport.generationTime).toLocaleDateString();
+    // Reconstruct the exact template the user requested
+    const markdownContent = `# Industry Report
+**Prepared by:** Big Brain
+**Date:** ${date}
+**Version:** v1.0
+
+---
+
+## Executive Summary
+${editedReport.executiveSummary}
+
+### Key Takeaways
+${editedReport.keyTakeaways.map(t => `- ${t}`).join('\n')}
+
+---
+
+${editedReport.fullReport}
+
+---
+
+## Methodology & Sources
+### Research Methodology
+- AI-driven synthesis of provided documents and global web sources.
+- Pattern matching across market data, competitive intelligence, and strategic frameworks.
+
+### Key Sources
+${editedReport.citations.map(c => `- **${c.sourceName}**: "${c.quote}"`).join('\n')}
+
+---
+
+## Disclaimer
+This report is for informational purposes only and does not constitute investment advice.
+`;
+
+    const blob = new Blob([markdownContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `BigBrain_Report_${Date.now()}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportPDF = () => {
     setIsExportingPDF(true);
     setTimeout(() => {
@@ -81,25 +131,25 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
       // Title Slide
       let titleSlide = pres.addSlide();
       titleSlide.background = { color: "F1F5F9" };
-      titleSlide.addText("CrestPoint AI Brain", {
+      titleSlide.addText("Big Brain", {
         x: 0, y: "35%", w: "100%", align: "center", fontSize: 44, bold: true, color: "4F46E5"
       });
       titleSlide.addText("Strategic Industry Research Analysis", {
         x: 0, y: "50%", w: "100%", align: "center", fontSize: 24, color: "64748B"
       });
-      titleSlide.addText(`Generated on: ${new Date(report.generationTime).toLocaleDateString()}`, {
+      titleSlide.addText(`Generated on: ${new Date(editedReport.generationTime).toLocaleDateString()}`, {
         x: 0, y: "85%", w: "100%", align: "center", fontSize: 12, color: "94A3B8"
       });
 
       // Executive Summary Slide
       let summarySlide = pres.addSlide();
       summarySlide.addText("Executive Summary", { x: 0.5, y: 0.5, w: "90%", fontSize: 28, bold: true, color: "4F46E5" });
-      summarySlide.addText(report.executiveSummary, { 
+      summarySlide.addText(editedReport.executiveSummary, { 
         x: 0.5, y: 1.5, w: "90%", h: "70%", fontSize: 14, color: "334155", align: "justify" 
       });
 
       // Analysis Slides (Split by paragraphs)
-      const paragraphs = report.fullReport.split('\n\n').filter(p => p.trim().length > 0);
+      const paragraphs = editedReport.fullReport.split('\n\n').filter(p => p.trim().length > 0);
       paragraphs.forEach((p, idx) => {
         let slide = pres.addSlide();
         slide.addText(`Detailed Analysis (Part ${idx + 1})`, { x: 0.5, y: 0.5, w: "90%", fontSize: 24, bold: true, color: "4F46E5" });
@@ -111,21 +161,21 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
       // Key Takeaways Slide
       let takeawaysSlide = pres.addSlide();
       takeawaysSlide.addText("Key Strategic Takeaways", { x: 0.5, y: 0.5, w: "90%", fontSize: 28, bold: true, color: "4F46E5" });
-      const bulletPoints = report.keyTakeaways.map(t => ({ text: t, options: { bullet: true, color: "334155", margin: 10 } }));
+      const bulletPoints = editedReport.keyTakeaways.map(t => ({ text: t, options: { bullet: true, color: "334155", margin: 10 } }));
       takeawaysSlide.addText(bulletPoints, { x: 0.5, y: 1.5, w: "90%", h: "70%", fontSize: 16 });
 
       // Citations/Sources Slide
-      if (report.citations.length > 0) {
+      if (editedReport.citations.length > 0) {
         let sourcesSlide = pres.addSlide();
         sourcesSlide.addText("Supporting Evidence & Sources", { x: 0.5, y: 0.5, w: "90%", fontSize: 28, bold: true, color: "4F46E5" });
-        const citationTexts = report.citations.map(c => ({ 
+        const citationTexts = editedReport.citations.map(c => ({ 
           text: `[${c.sourceName}] "${c.quote}"`, 
           options: { fontSize: 12, color: "64748B", italic: true, breakLine: true, margin: 10 } 
         }));
         sourcesSlide.addText(citationTexts as any, { x: 0.5, y: 1.5, w: "90%", h: "70%", fontSize: 12 });
       }
 
-      await pres.writeFile({ fileName: `CrestPoint_Presentation_${Date.now()}.pptx` });
+      await pres.writeFile({ fileName: `BigBrain_Presentation_${Date.now()}.pptx` });
     } catch (error) {
       console.error("PPT export failed:", error);
       alert("Failed to export PPT. Check console for details.");
@@ -137,7 +187,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
   const handleExportWord = async () => {
     setIsExportingWord(true);
     try {
-      const reportParagraphs = report.fullReport
+      const reportParagraphs = editedReport.fullReport
         .split('\n')
         .filter(p => p.trim().length > 0)
         .map(text => new Paragraph({
@@ -151,7 +201,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
           properties: {},
           children: [
             new Paragraph({
-              text: "CrestPoint AI Brain",
+              text: "Big Brain",
               heading: HeadingLevel.HEADING_1,
               alignment: AlignmentType.CENTER,
               spacing: { after: 120 },
@@ -165,7 +215,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: `Date: ${new Date(report.generationTime).toLocaleDateString()}`,
+                  text: `Date: ${new Date(editedReport.generationTime).toLocaleDateString()}`,
                   italics: true,
                   size: 20,
                 }),
@@ -176,7 +226,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "\n© CrestPoint AI Brain • Strategic Research Division",
+                  text: "\n© Big Brain • Strategic Research Division",
                   size: 16,
                   color: "888888",
                 }),
@@ -192,7 +242,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `CrestPoint_Report_${new Date().getTime()}.docx`;
+      link.download = `BigBrain_Report_${new Date().getTime()}.docx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -208,11 +258,11 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
     <div className="print-portal-root">
       <header style={{ marginBottom: '40px', borderBottom: '6px solid #4f46e5', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <h1 style={{ fontSize: '28pt', fontWeight: 900, textTransform: 'uppercase', margin: 0, color: '#1e293b' }}>CrestPoint AI</h1>
+          <h1 style={{ fontSize: '28pt', fontWeight: 900, textTransform: 'uppercase', margin: 0, color: '#1e293b' }}>Big Brain</h1>
           <p style={{ color: '#4f46e5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '9pt', marginTop: '4px' }}>Strategic Industry Analysis</p>
         </div>
         <div style={{ textAlign: 'right', fontSize: '8pt', fontWeight: 600, color: '#64748b' }}>
-          <p>DATE: {new Date(report.generationTime).toLocaleDateString()}</p>
+          <p>DATE: {new Date(editedReport.generationTime).toLocaleDateString()}</p>
           <p>CONFIDENTIAL • INTERNAL RESEARCH</p>
         </div>
       </header>
@@ -220,21 +270,21 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
       <section className="printable-item">
         <h2 style={{ fontSize: '16pt', fontWeight: 800, borderBottom: '2px solid #e2e8f0', paddingBottom: '6px', marginBottom: '16px', color: '#1e293b' }}>I. Executive Summary</h2>
         <div style={{ whiteSpace: 'pre-wrap', fontSize: '10.5pt', textAlign: 'justify', lineHeight: '1.6', color: '#334155' }}>
-          {report.executiveSummary}
+          {editedReport.executiveSummary}
         </div>
       </section>
 
       <section className="printable-item">
         <h2 style={{ fontSize: '16pt', fontWeight: 800, borderBottom: '2px solid #e2e8f0', paddingBottom: '6px', marginBottom: '16px', color: '#1e293b' }}>II. Detailed Industry Analysis</h2>
         <div style={{ whiteSpace: 'pre-wrap', fontSize: '10.5pt', textAlign: 'justify', lineHeight: '1.8', color: '#334155' }}>
-          {report.fullReport}
+          {editedReport.fullReport}
         </div>
       </section>
 
       <section className="printable-item">
         <h2 style={{ fontSize: '16pt', fontWeight: 800, borderBottom: '2px solid #e2e8f0', paddingBottom: '6px', marginBottom: '16px', color: '#1e293b' }}>III. Strategic Takeaways</h2>
         <div style={{ display: 'block' }}>
-          {report.keyTakeaways.map((point, idx) => (
+          {editedReport.keyTakeaways.map((point, idx) => (
             <div key={idx} style={{ display: 'flex', marginBottom: '12px', alignItems: 'flex-start' }}>
               <span style={{ fontWeight: 800, color: '#4f46e5', marginRight: '12px', minWidth: '20px', fontSize: '12pt' }}>{idx + 1}.</span>
               <p style={{ fontWeight: 600, fontSize: '10.5pt', margin: 0, color: '#1e293b' }}>{point}</p>
@@ -243,11 +293,11 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
         </div>
       </section>
 
-      {report.citations.length > 0 && (
+      {editedReport.citations.length > 0 && (
         <section className="printable-item">
           <h2 style={{ fontSize: '16pt', fontWeight: 800, borderBottom: '2px solid #e2e8f0', paddingBottom: '6px', marginBottom: '16px', color: '#1e293b' }}>IV. Supporting Evidence</h2>
           <div style={{ display: 'block' }}>
-            {report.citations.map((citation, idx) => (
+            {editedReport.citations.map((citation, idx) => (
               <div key={idx} style={{ marginBottom: '18px' }}>
                 <p style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '7.5pt', marginBottom: '2px', color: '#64748b' }}>
                   SOURCE: {citation.sourceName}
@@ -273,14 +323,20 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Research Insights</h2>
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
+            <FileText className="w-4 h-4 mr-1" /> {isEditing ? 'Save' : 'Edit'}
+          </Button>
         </div>
         <div className="flex space-x-2">
            <Button variant="outline" size="sm" onClick={() => handleCopy(report.fullReport)}>
               {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
               {copied ? 'Copied' : 'Copy Text'}
            </Button>
+           <Button variant="outline" size="sm" onClick={handleExportMarkdown}>
+              <FileCode className="w-4 h-4 mr-1" /> Markdown
+           </Button>
            <Button variant="outline" size="sm" onClick={handleExportWord} isLoading={isExportingWord}>
-              <FileCode className="w-4 h-4 mr-1" /> Word
+              <FileText className="w-4 h-4 mr-1" /> Word
            </Button>
            <Button variant="outline" size="sm" onClick={handleExportPPT} isLoading={isExportingPPT}>
               <Presentation className="w-4 h-4 mr-1" /> PPT
@@ -319,29 +375,57 @@ export const ReportView: React.FC<ReportViewProps> = ({ report, onBack }) => {
           {activeTab === 'summary' && (
             <div className="max-w-none">
               <h3 className="text-xl font-semibold mb-6 text-slate-900 dark:text-white border-l-4 border-indigo-600 pl-4">Executive Summary</h3>
-              <div className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed text-lg">
-                {report.executiveSummary}
-              </div>
+              {isEditing ? (
+                <textarea
+                  className="w-full h-96 p-4 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-slate-100 text-lg"
+                  value={editedReport.executiveSummary}
+                  onChange={(e) => setEditedReport({ ...editedReport, executiveSummary: e.target.value })}
+                />
+              ) : (
+                <div className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed text-lg">
+                  {editedReport.executiveSummary}
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'full' && (
             <div className="max-w-none">
-              <div className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-loose text-lg font-normal">
-                {report.fullReport}
-              </div>
+              {isEditing ? (
+                <textarea
+                  className="w-full h-[600px] p-4 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-slate-100 text-lg font-normal"
+                  value={editedReport.fullReport}
+                  onChange={(e) => setEditedReport({ ...editedReport, fullReport: e.target.value })}
+                />
+              ) : (
+                <div className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-loose text-lg font-normal">
+                  {editedReport.fullReport}
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'takeaways' && (
             <div className="max-w-4xl mx-auto">
               <ul className="space-y-4">
-                {report.keyTakeaways.map((point, idx) => (
+                {editedReport.keyTakeaways.map((point, idx) => (
                   <li key={idx} className="flex items-start p-5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                     <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 text-white text-xs font-bold mr-4">
                       {idx + 1}
                     </span>
-                    <span className="text-slate-800 dark:text-slate-200 font-medium leading-tight">{point}</span>
+                    {isEditing ? (
+                      <textarea
+                        className="flex-1 p-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-slate-100 text-sm"
+                        value={point}
+                        onChange={(e) => {
+                          const newTakeaways = [...editedReport.keyTakeaways];
+                          newTakeaways[idx] = e.target.value;
+                          setEditedReport({ ...editedReport, keyTakeaways: newTakeaways });
+                        }}
+                      />
+                    ) : (
+                      <span className="text-slate-800 dark:text-slate-200 font-medium leading-tight">{point}</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -480,7 +564,7 @@ const VisualPreview: React.FC<{ asset: VisualAsset | undefined, title: string }>
   const downloadImage = () => {
     const link = document.createElement('a');
     link.href = `data:image/png;base64,${asset.imageBase64}`;
-    link.download = `crestpoint_${asset.platform}_${Date.now()}.png`;
+    link.download = `bigbrain_${asset.platform}_${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

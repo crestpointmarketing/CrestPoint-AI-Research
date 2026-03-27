@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { GeneratedReport, ResearchConfig, Source, SocialPosts, SocialVisuals, VisualAsset } from "../types";
+import { GeneratedReport, ResearchConfig, Source, SocialPosts, SocialVisuals } from "../types";
 
 const getApiKey = () => {
   const key = process.env.API_KEY;
@@ -16,7 +16,7 @@ const constructPrompt = (config: ResearchConfig, sources: Source[]): string => {
     .join("\n\n");
 
   return `
-You are a senior industry analyst at CrestPoint AI Brain, a top-tier strategy consulting firm.
+You are a senior industry analyst at Big Brain, a top-tier strategy consulting firm.
 Your task is to generate a professional industry report based strictly on the user's requirements and the provided knowledge base.
 
 RESEARCH PARAMETERS:
@@ -32,12 +32,22 @@ KNOWLEDGE BASE (CONTEXT):
 ${sourceContext || "No specific documents provided. Rely on general professional knowledge."}
 
 STRICT INSTRUCTIONS FOR THE "fullReport" SECTION:
-1. Remove all AI-style formatting symbols, including but not limited to Markdown headings (##, ###) and bold markers (**).
-2. Convert the entire content into natural paragraphs with clear logical flow.
-3. Keep all original facts and data points.
-4. Use formal, neutral, and analytical language.
-5. Ensure the final output looks like it was written by a human analyst.
-6. OUTPUT FORMAT for "fullReport": Plain text only, double newlines between paragraphs.
+The "fullReport" field must be formatted in MARKDOWN. 
+You MUST structure the "fullReport" content to cover the following sections in order (use ## for headers):
+1. ## Industry Definition & Scope
+2. ## Market Size & Growth
+3. ## Market Drivers
+4. ## Market Challenges & Risks
+5. ## Technology Landscape
+6. ## Competitive Landscape (Include a table representation if possible)
+7. ## Use Cases & Applications
+8. ## Buyer Personas
+9. ## Trends & Future Outlook
+10. ## Strategic Implications
+11. ## Recommendations
+
+Do NOT include the "Executive Summary" or "Methodology" in the "fullReport" string, as those are handled by separate fields or the system wrapper.
+Maintain a professional, data-driven tone.
 
 Output JSON strictly adhering to the schema.
 `;
@@ -227,7 +237,7 @@ const generateImage = async (prompt: string, aspectRatio: '16:9' | '3:4'): Promi
   });
 
   for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) return part.inlineData.data;
+    if (part.inlineData?.data) return part.inlineData.data;
   }
   throw new Error("No image data returned");
 };

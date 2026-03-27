@@ -15,9 +15,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onChangeVi
         <div className="p-6">
           <div className="flex items-center space-x-2 text-indigo-400 font-bold text-xl">
              <LayoutGrid className="w-6 h-6" />
-             <span>CrestPoint AI Brain</span>
+             <span>Big Brain</span>
           </div>
-          <p className="text-xs text-slate-400 mt-2">Enterprise Research Platform</p>
+          <p className="text-xs text-slate-400 mt-2">Industry Research Center</p>
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-1">
@@ -44,7 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onChangeVi
         <div className="p-4 border-t border-slate-800">
            <NavItem 
             icon={Settings} 
-            label="System Cleanup" 
+            label="Setting" 
             active={false} 
             onClick={() => {}} 
           />
